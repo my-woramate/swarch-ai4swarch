@@ -38,15 +38,17 @@ evidence: system/online-boutique/protos/demo.proto, system/online-boutique/kuber
 
 | ผู้เรียก → ผู้ถูกเรียก | หลักฐานที่ AI อ้าง | ยืนยันแล้วหรือไม่ ✅ / ❌ / ❓ | สิ่งที่นิสิตพบ |
 |---|---|---|---|
-| | | | |
-| | | | |
-| | | | |
-| | | | |
-| | | | |
+| checkoutservice → paymentservice | `system/online-boutique/kubernetes-manifests/checkoutservice.yaml` (PAYMENT_SERVICE_ADDR), `system/online-boutique/protos/demo.proto` | ✅ | ตรวจสอบใน `system/online-boutique/src/checkoutservice/main.go` พบฟังก์ชัน `chargeCard` เรียก `PaymentServiceClient.Charge` จริง |
+| checkoutservice → emailservice | `system/online-boutique/kubernetes-manifests/checkoutservice.yaml` (EMAIL_SERVICE_ADDR), `system/online-boutique/protos/demo.proto` | ✅ | ตรวจสอบใน `system/online-boutique/src/checkoutservice/main.go` พบฟังก์ชัน `sendOrderConfirmation` เรียก `EmailServiceClient.SendOrderConfirmation` จริง |
+| checkoutservice → cartservice | `system/online-boutique/kubernetes-manifests/checkoutservice.yaml` (CART_SERVICE_ADDR), `system/online-boutique/protos/demo.proto` | ✅ | ตรวจสอบใน `system/online-boutique/src/checkoutservice/main.go` พบการเรียก `CartServiceClient.GetCart` และ `EmptyCart` จริง |
+| checkoutservice → shippingservice | `system/online-boutique/kubernetes-manifests/checkoutservice.yaml` (SHIPPING_SERVICE_ADDR), `system/online-boutique/protos/demo.proto` | ✅ | ตรวจสอบใน `system/online-boutique/src/checkoutservice/main.go` พบการเรียก `ShippingServiceClient.GetQuote` และ `ShipOrder` จริง |
+| cartservice → redis-cart | `system/online-boutique/kubernetes-manifests/cartservice.yaml` (REDIS_ADDR="redis-cart:6379") | ✅ | ใน manifest ของ cartservice มีการตั้งค่า environment variable ชี้ไปยัง Service redis-cart พอร์ต 6379 จริง |
 
-- **สิ่งที่ผิดหรือขาดหายไป** ใน Run B (dependency ที่ไม่มีจริง, dependency ที่ขาดไป, container ที่น่าสงสัย): …
+- **สิ่งที่ผิดหรือขาดหายไป** ใน Run B (dependency ที่ไม่มีจริง, dependency ที่ขาดไป, container ที่น่าสงสัย): ใน manifest ไม่ได้ระบุภาษาโปรแกรมหรือ runtime ของแต่ละ service และไม่เห็นพฤติกรรมการจัดการข้อผิดพลาดภายในโค้ด เช่น ไม่รู้ว่าหาก emailservice ล้มเหลว checkoutservice จะแค่เตือน warning และปล่อยผ่านโดยไม่ทำให้ order ล้มเหลว
 
 ## สะท้อนคิด (ข้อละ 2–3 ประโยค)
 
-1. เปรียบเทียบ A กับ B: agent **ไม่สามารถ**รู้อะไรได้จากไฟล์ `.proto` เพียงไฟล์เดียว และเพราะเหตุใด
-2. ข้อผิดพลาด**ข้อใดข้อหนึ่ง**ที่จะทำให้สมาชิกใหม่ของทีมเข้าใจผิดมากที่สุด หากเผยแพร่แผนภาพนี้โดยไม่ตรวจสอบ
+1. เปรียบเทียบ A กับ B: agent **ไม่สามารถ**รู้อะไรได้จากไฟล์ `.proto` เพียงไฟล์เดียว และเพราะเหตุใด:
+   - agent ไม่สามารถรู้ทิศทางการเรียกใช้งาน (dependencies) ระหว่าง service, ไม่ค้นพบเว็บ frontend, data store (redis) หรือ load generator จากไฟล์ `.proto` เพียงไฟล์เดียว เพราะ `.proto` นิยามเฉพาะ interface contract ของแต่ละ service แต่ไม่ได้ระบุว่า service ใดเป็น caller หรือ callee และไม่ได้ระบุ deployment topology
+2. ข้อผิดพลาด**ข้อใดข้อหนึ่ง**ที่จะทำให้สมาชิกใหม่ของทีมเข้าใจผิดมากที่สุด หากเผยแพร่แผนภาพนี้โดยไม่ตรวจสอบ:
+   - การเข้าใจผิดว่า emailservice เป็น synchronous dependency ที่สำคัญและการันตีการส่งอีเมลสำเร็จ ทั้งที่ความจริงโค้ด checkoutservice แค่ log warning แล้วปล่อยผ่าน ทำให้เข้าใจระดับ reliability และ transaction boundary ของระบบผิดไป

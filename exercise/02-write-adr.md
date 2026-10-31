@@ -35,10 +35,10 @@ language: Thai
 
 | เกณฑ์ | Run a | Run b |
 |---|---|---|
-| ใช้ตัวเลขจาก scenario หรือไม่ (latency, ช่วงพีก, ข้อจำกัดของ MailFast) | | |
-| ทางเลือกที่พิจารณา (ระบุ) | | |
-| จัดการแต้มสะสมแบบ "ครั้งเดียวเท่านั้น" และ rate limit ของ MailFast หรือไม่ อย่างไร | | |
-| มีสิ่งที่แต่งขึ้นเองหรือไม่ (ตัวเลข เครื่องมือ หรือข้อเท็จจริงที่ไม่มีใน scenario) | | |
+| ใช้ตัวเลขจาก scenario หรือไม่ (latency, ช่วงพีก, ข้อจำกัดของ MailFast) | ไม่ใช้ (ไม่มีตัวเลขจริง เช่น 200 orders/s, 50 emails/s, 500 ms) | ใช้ครบถ้วน (อ้างอิง latency p95 ≤ 500 ms, peak 200 orders/s, MailFast limit 50 emails/s และ failure 0.5%) |
+| ทางเลือกที่พิจารณา (ระบุ) | Event-Driven Architecture, Synchronous API Orchestration, Outbox Pattern | Direct gRPC, RabbitMQ (Message Broker), Apache Kafka |
+| จัดการแต้มสะสมแบบ "ครั้งเดียวเท่านั้น" และ rate limit ของ MailFast หรือไม่ อย่างไร | กล่าวถึงแบบกว้างๆ ในเชิงทฤษฎีว่าควรทำ idempotency และ rate limiter | กำหนดชัดเจนให้ consumer ใช้ Token Bucket/prefetch คุมอัตราส่ง MailFast ≤ 50/s และใช้ order_id เป็น Idempotency key ใน loyaltyservice |
+| มีสิ่งที่แต่งขึ้นเองหรือไม่ (ตัวเลข เครื่องมือ หรือข้อเท็จจริงที่ไม่มีใน scenario) | มีการสมมุติตัวเลขและเครื่องมือที่ไม่ได้กำหนดไว้ในโจทย์ | ไม่มี ยึดตามข้อเท็จจริงใน scenario, stack Go และระบบ Kubernetes ของเดิม |
 
 ## รับผิดชอบ ADR ฉบับสุดท้ายของตัวเอง
 
@@ -51,6 +51,6 @@ language: Thai
 
 | # | สิ่งที่เปลี่ยนจากร่างของ AI | เหตุผล |
 |---|---|---|
-| 1 | | |
-| 2 | | |
-| 3 | | |
+| 1 | ให้ใช้ order_id ด้วย Idempotency key ใน loyaltyservices| เพื่อให้มั่นใจว่าจะไม่มีการแจ้มแต้มซ้ำซ้อน|
+| 2 | กำหนด RabbitMQ ให้ใช้ Qourun Queues บน K8S| เพื่อป้องกัน message loss และเพิ่มความมั่นคงหากมาโหนดล่ม |
+| 3 | เพื่อม DQR และระบบ Alert ให้กัวคิวของอีเมล | เพื่อรองรับระบบ MailFest ล่มเกินจานวนครั้ง|
